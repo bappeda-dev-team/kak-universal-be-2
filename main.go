@@ -30,21 +30,22 @@ func NewServer(authMiddleware *middleware.AuthMiddleware) *http.Server {
 }
 
 func main() {
-	runSeeder := flag.Bool("seed", false, "Jalankan database seeder")
 	flag.Parse()
 	// Load environment variables
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error loading .env file:", err)
 	}
-	// Cek flag seeder
-	if *runSeeder {
-		log.Println("Menjalankan database seeder...")
-		seeder := InitializeSeeder()
-		seeder.SeedAll()
-		log.Println("Seeder selesai dijalankan")
-		return
+
+	jwksURL := os.Getenv("KEYCLOAK_JWKS_URL") // e.g. https://keycloak.local/realms/myrealm/protocol/openid-connect/certs
+	if jwksURL == "" {
+		log.Fatal("Error KEYCLOAK JWKS NOT FOUND")
 	}
+	erru := middleware.InitJWKS(jwksURL)
+	if erru != nil {
+		log.Fatalf("Failed to initialize JWKS: %v", erru)
+	}
+
 	// Initialize dan jalankan server
 	server := InitializeServer()
 	log.Printf("Server berjalan di %s", server.Addr)

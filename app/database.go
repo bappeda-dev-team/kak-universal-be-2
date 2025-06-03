@@ -23,7 +23,7 @@ func GetConnection() *sql.DB {
 	dbName := os.Getenv("DB_NAME")
 	dbHost := os.Getenv("DB_HOST")
 
-	log.Printf("Mencoba koneksi ke database %s di %s:%s...", dbName, dbHost, dbPort)
+	log.Printf("Mencoba koneksi ke database: %v", dbName)
 
 	if dbHost == "" {
 		dbHost = "localhost"
@@ -34,8 +34,10 @@ func GetConnection() *sql.DB {
 	dbUrl := os.Getenv("DB_URL")
 
 	if dbUrl != "" {
+	    log.Printf("Mencoba koneksi ke database DB_URL")
 		connStr = dbUrl
 	}
+
 
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {

@@ -5,8 +5,23 @@ import (
 	"ekak_kabupaten_madiun/helper"
 	"ekak_kabupaten_madiun/model/web"
 	"net/http"
+	"os"
 	"strings"
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/MicahParks/keyfunc"
 )
+
+var JWKS *keyfunc.JWKS
+
+func InitJWKS(jwksURL string) error {
+	var err error
+	JWKS, err = keyfunc.Get(jwksURL, keyfunc.Options{
+		RefreshInterval: time.Hour,
+	})
+	return err
+}
 
 type AuthMiddleware struct {
 	Handler http.Handler
@@ -16,57 +31,48 @@ func NewAuthMiddleware(handler http.Handler) *AuthMiddleware {
 	return &AuthMiddleware{Handler: handler}
 }
 
-func (middleware *AuthMiddleware) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	publicPaths := []struct {
-		path    string
-		pattern string
-	}{
-		{"/user/login", "^/user/login$"},
-		{"/api/pokin_opd/findall/", "^/api/pokin_opd/findall/[^/]+/[^/]+$"},
+
+func (middleware *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tokenHeader := r.Header.Get("Authorization")
+	if tokenHeader == "" || !strings.HasPrefix(tokenHeader, "Bearer ") {
+		writeUnauthorized(w, "Missing or invalid Authorization header")
+		return
 	}
+	rawToken := strings.TrimPrefix(tokenHeader, "Bearer ")
 
-	currentPath := request.URL.Path
-	for _, route := range publicPaths {
-		if strings.HasPrefix(currentPath, route.path) || helper.MatchPattern(currentPath, route.pattern) {
-			middleware.Handler.ServeHTTP(writer, request)
-			return
-		}
-	}
 
-	tokenString := request.Header.Get("Authorization")
-	if tokenString == "" {
-		writer.Header().Set("Content-Type", "application/json")
-		writer.WriteHeader(http.StatusUnauthorized)
-
-		webResponse := web.WebResponse{
-			Code:   http.StatusUnauthorized,
-			Status: "UNAUTHORIZED",
-			Data:   "Token tidak ditemukan",
-		}
-
-		helper.WriteToResponseBody(writer, webResponse)
+	token, err := jwt.Parse(rawToken, JWKS.Keyfunc)
+	if err != nil || !token.Valid {
+		writeUnauthorized(w, "Invalid token")
 		return
 	}
 
-	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-
-	claims := helper.ValidateJWT(tokenString)
-	if claims.UserId == 0 {
-		writer.Header().Set("Content-Type", "application/json")
-		writer.WriteHeader(http.StatusUnauthorized)
-
-		webResponse := web.WebResponse{
-			Code:   http.StatusUnauthorized,
-			Status: "UNAUTHORIZED",
-			Data:   "Token tidak valid",
-		}
-
-		helper.WriteToResponseBody(writer, webResponse)
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		writeUnauthorized(w, "Invalid claims")
 		return
 	}
 
-	ctx := context.WithValue(request.Context(), helper.UserInfoKey, claims)
-	request = request.WithContext(ctx)
+	// Optional: validate audience or issuer
+	issuer := os.Getenv("KEYCLOAK_ISSUER")
+	if iss, ok := claims["iss"].(string); !ok || iss != issuer {
+		writeUnauthorized(w, "Invalid issuer")
+		return
+	}
 
-	middleware.Handler.ServeHTTP(writer, request)
+	// Set user info in context
+	ctx := context.WithValue(r.Context(), helper.UserInfoKey, claims)
+	r = r.WithContext(ctx)
+
+	middleware.Handler.ServeHTTP(w, r)
+}
+
+func writeUnauthorized(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	helper.WriteToResponseBody(w, web.WebResponse{
+		Code:   http.StatusUnauthorized,
+		Status: "UNAUTHORIZED",
+		Data:   message,
+	})
 }

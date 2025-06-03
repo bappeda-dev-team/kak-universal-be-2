@@ -1,13 +1,14 @@
-ARG GO_VERSION=1.22.8
+ARG GO_VERSION=1.23.0
 
-FROM registry.docker.com/library/golang:$GO_VERSION-alpine as base
+
+FROM registry.docker.com/library/golang:$GO_VERSION-alpine AS base
 
 # app lives here
 WORKDIR /app
 
 
 # Throw-away build stage to reduce size of final image
-FROM base as build
+FROM base AS build
 
 # Install packages needed to build
 RUN apk update -qq && \
