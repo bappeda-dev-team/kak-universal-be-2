@@ -338,7 +338,7 @@ func (repository *TujuanOpdRepositoryImpl) FindTargetByIndikatorId(ctx context.C
         SELECT id, target, satuan, tahun
         FROM tb_target 
         WHERE indikator_id = ?
-        AND tahun <= ?
+        AND tahun = ?  -- Ubah dari tahun <= ? menjadi tahun = ?
         ORDER BY tahun ASC
     `
 
@@ -609,18 +609,38 @@ func (repository *TujuanOpdRepositoryImpl) FindTujuanOpdByTahun(ctx context.Cont
 
 		// Generate target untuk setiap indikator
 		for j := range tujuanOpds[i].Indikator {
+			// Ambil target yang sudah ada dari database
+			existingTargets, err := repository.FindTargetByIndikatorId(ctx, tx, tujuanOpds[i].Indikator[j].Id, tujuanOpds[i].TahunAwal)
+			if err != nil {
+				return nil, err
+			}
+
+			// Buat map untuk target yang sudah ada
+			targetMap := make(map[string]domain.Target)
+			for _, target := range existingTargets {
+				targetMap[target.Tahun] = target
+			}
+
+			// Generate target untuk semua tahun dalam periode
 			tahunAwalInt, _ := strconv.Atoi(tujuanOpds[i].TahunAwal)
 			tahunAkhirInt, _ := strconv.Atoi(tujuanOpds[i].TahunAkhir)
 
 			var targets []domain.Target
 			for tahun := tahunAwalInt; tahun <= tahunAkhirInt; tahun++ {
-				targets = append(targets, domain.Target{
-					Id:          "",
-					IndikatorId: tujuanOpds[i].Indikator[j].Id,
-					Target:      "",
-					Satuan:      "",
-					Tahun:       strconv.Itoa(tahun),
-				})
+				tahunStr := strconv.Itoa(tahun)
+				// Jika target untuk tahun ini sudah ada, gunakan yang ada
+				if existingTarget, exists := targetMap[tahunStr]; exists {
+					targets = append(targets, existingTarget)
+				} else {
+					// Jika belum ada, buat target kosong
+					targets = append(targets, domain.Target{
+						Id:          "",
+						IndikatorId: tujuanOpds[i].Indikator[j].Id,
+						Target:      "",
+						Satuan:      "",
+						Tahun:       tahunStr,
+					})
+				}
 			}
 			tujuanOpds[i].Indikator[j].Target = targets
 		}

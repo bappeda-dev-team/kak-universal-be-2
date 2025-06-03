@@ -36,6 +36,7 @@ type PohonKinerjaAdminStrategicCreateRequest struct {
 	Parent    int `json:"parent"`
 	// LevelPohon int `json:"level_pohon"`
 	JenisPohon string `json:"jenis_pohon"`
+	Turunan    bool   `json:"turunan"`
 }
 
 type IndikatorCreateRequest struct {

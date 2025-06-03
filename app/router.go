@@ -416,5 +416,8 @@ func NewRouter(
 	//count pokin pemda in opd
 	router.GET("/pohon_kinerja_opd/count_pokin_pemda/:kode_opd/:tahun", pohonKinerjaOpdController.CountPokinPemda)
 
+	//Api Internal Consume
+	router.GET("/api/pokin_opd/findall/:kode_opd/:tahun", pohonKinerjaOpdController.FindAll)
+
 	return router
 }

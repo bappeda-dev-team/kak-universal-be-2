@@ -8,21 +8,23 @@ type PohonKinerjaAdminResponse struct {
 }
 
 type PohonKinerjaAdminResponseData struct {
-	Id             int                    `json:"id"`
-	Parent         int                    `json:"parent,omitempty"`
-	NamaPohon      string                 `json:"nama_pohon"`
-	KodeOpd        string                 `json:"kode_opd,omitempty"`
-	NamaOpd        string                 `json:"nama_opd,omitempty"`
-	Keterangan     string                 `json:"keterangan,omitempty"`
-	Tahun          string                 `json:"tahun"`
-	NamaOpdPengaju string                 `json:"nama_opd_pengaju,omitempty"`
-	JenisPohon     string                 `json:"jenis_pohon"`
-	LevelPohon     int                    `json:"level_pohon"`
-	Status         string                 `json:"status"`
-	IsActive       bool                   `json:"is_active"`
-	CountReview    int                    `json:"jumlah_review"`
-	Pelaksana      []PelaksanaOpdResponse `json:"pelaksana,omitempty"`
-	Indikators     []IndikatorResponse    `json:"indikator,omitempty"`
+	Id              int                          `json:"id"`
+	Parent          int                          `json:"parent,omitempty"`
+	NamaPohon       string                       `json:"nama_pohon"`
+	KodeOpd         string                       `json:"kode_opd,omitempty"`
+	NamaOpd         string                       `json:"nama_opd,omitempty"`
+	PerangkatDaerah *opdmaster.OpdResponseForAll `json:"perangkat_daerah,omitempty"`
+	Keterangan      string                       `json:"keterangan,omitempty"`
+	Tahun           string                       `json:"tahun"`
+	NamaOpdPengaju  string                       `json:"nama_opd_pengaju,omitempty"`
+	JenisPohon      string                       `json:"jenis_pohon"`
+	LevelPohon      int                          `json:"level_pohon"`
+	Status          string                       `json:"status"`
+	IsActive        bool                         `json:"is_active"`
+	CountReview     int                          `json:"jumlah_review"`
+	Pelaksana       []PelaksanaOpdResponse       `json:"pelaksana,omitempty"`
+	Indikators      []IndikatorResponse          `json:"indikator,omitempty"`
+	Childs          []interface{}                `json:"childs,omitempty"`
 	// SubTematiks []SubtematikResponse `json:"sub_tematiks,omitempty"`
 }
 

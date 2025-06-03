@@ -31,6 +31,7 @@ func NewAuthMiddleware(handler http.Handler) *AuthMiddleware {
 	return &AuthMiddleware{Handler: handler}
 }
 
+
 func (middleware *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tokenHeader := r.Header.Get("Authorization")
 	if tokenHeader == "" || !strings.HasPrefix(tokenHeader, "Bearer ") {
@@ -38,6 +39,7 @@ func (middleware *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	rawToken := strings.TrimPrefix(tokenHeader, "Bearer ")
+
 
 	token, err := jwt.Parse(rawToken, JWKS.Keyfunc)
 	if err != nil || !token.Valid {

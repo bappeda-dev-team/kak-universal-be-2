@@ -781,8 +781,25 @@ func (service *PohonKinerjaOpdServiceImpl) FindAll(ctx context.Context, kodeOpd,
 
 		var indikatorResponses []pohonkinerja.IndikatorTujuanResponse
 		for _, indikator := range indikators {
+			// Ambil target untuk setiap indikator dengan filter tahun
+			targets, err := service.tujuanOpdRepository.FindTargetByIndikatorId(ctx, tx, indikator.Id, tahun)
+			if err != nil {
+				log.Printf("Error getting targets for indikator ID %s: %v", indikator.Id, err)
+				continue
+			}
+
+			var targetResponses []pohonkinerja.TargetTujuanResponse
+			for _, target := range targets {
+				targetResponses = append(targetResponses, pohonkinerja.TargetTujuanResponse{
+					Tahun:  target.Tahun,
+					Target: target.Target,
+					Satuan: target.Satuan,
+				})
+			}
+
 			indikatorResponses = append(indikatorResponses, pohonkinerja.IndikatorTujuanResponse{
 				Indikator: indikator.Indikator,
+				Target:    targetResponses,
 			})
 		}
 

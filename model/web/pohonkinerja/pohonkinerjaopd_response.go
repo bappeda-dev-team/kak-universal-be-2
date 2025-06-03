@@ -121,7 +121,14 @@ type TujuanOpdResponse struct {
 }
 
 type IndikatorTujuanResponse struct {
-	Indikator string `json:"indikator"`
+	Indikator string                 `json:"indikator"`
+	Target    []TargetTujuanResponse `json:"targets"`
+}
+
+type TargetTujuanResponse struct {
+	Tahun  string `json:"tahun"`
+	Target string `json:"target"`
+	Satuan string `json:"satuan"`
 }
 
 type PeriodeResponse struct {

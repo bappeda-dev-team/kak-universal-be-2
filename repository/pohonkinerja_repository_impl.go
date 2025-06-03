@@ -962,7 +962,8 @@ func (repository *PohonKinerjaRepositoryImpl) FindPokinAdminById(ctx context.Con
             pk.kode_opd, 
             pk.keterangan, 
             pk.tahun,
-            pk.status
+            pk.status,
+			pk.is_active
         FROM 
             tb_pohon_kinerja pk 
         WHERE 
@@ -979,6 +980,7 @@ func (repository *PohonKinerjaRepositoryImpl) FindPokinAdminById(ctx context.Con
 		&pokin.Keterangan,
 		&pokin.Tahun,
 		&pokin.Status,
+		&pokin.IsActive,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1365,7 +1367,7 @@ func (repository *PohonKinerjaRepositoryImpl) FindTargetByIndikatorId(ctx contex
 }
 
 func (repository *PohonKinerjaRepositoryImpl) FindPokinToClone(ctx context.Context, tx *sql.Tx, id int) (domain.PohonKinerja, error) {
-	script := "SELECT id, nama_pohon, parent, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status FROM tb_pohon_kinerja WHERE id = ?"
+	script := "SELECT id, nama_pohon, parent, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status, is_active FROM tb_pohon_kinerja WHERE id = ?"
 	rows, err := tx.QueryContext(ctx, script, id)
 	if err != nil {
 		return domain.PohonKinerja{}, fmt.Errorf("gagal memeriksa data yang akan di-clone: %v", err)
@@ -1384,6 +1386,7 @@ func (repository *PohonKinerjaRepositoryImpl) FindPokinToClone(ctx context.Conte
 			&existingPokin.Keterangan,
 			&existingPokin.Tahun,
 			&existingPokin.Status,
+			&existingPokin.IsActive,
 		)
 		if err != nil {
 			return domain.PohonKinerja{}, fmt.Errorf("gagal membaca data yang akan di-clone: %v", err)
@@ -1490,8 +1493,8 @@ func (repository *PohonKinerjaRepositoryImpl) FindTargetToClone(ctx context.Cont
 
 func (repository *PohonKinerjaRepositoryImpl) InsertClonedPokin(ctx context.Context, tx *sql.Tx, pokin domain.PohonKinerja) (int64, error) {
 	script := `INSERT INTO tb_pohon_kinerja 
-        (nama_pohon, parent, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status, clone_from) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (nama_pohon, parent, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status, clone_from, is_active) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	result, err := tx.ExecContext(ctx, script,
 		pokin.NamaPohon,
 		pokin.Parent,
@@ -1502,6 +1505,7 @@ func (repository *PohonKinerjaRepositoryImpl) InsertClonedPokin(ctx context.Cont
 		pokin.Tahun,
 		pokin.Status,
 		pokin.CloneFrom,
+		pokin.IsActive,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("gagal menyimpan data pohon kinerja yang di-clone: %v", err)
@@ -1929,7 +1933,7 @@ func (repository *PohonKinerjaRepositoryImpl) DeleteClonedPokinHierarchy(ctx con
 }
 
 func (r *PohonKinerjaRepositoryImpl) FindChildPokins(ctx context.Context, tx *sql.Tx, parentId int64) ([]domain.PohonKinerja, error) {
-	SQL := `SELECT id, parent, nama_pohon, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status, clone_from 
+	SQL := `SELECT id, parent, nama_pohon, jenis_pohon, level_pohon, kode_opd, keterangan, tahun, status, clone_from, is_active
             FROM tb_pohon_kinerja 
             WHERE parent = ?`
 
@@ -1953,6 +1957,7 @@ func (r *PohonKinerjaRepositoryImpl) FindChildPokins(ctx context.Context, tx *sq
 			&pokin.Tahun,
 			&pokin.Status,
 			&pokin.CloneFrom,
+			&pokin.IsActive,
 		)
 		if err != nil {
 			return nil, err
@@ -2896,4 +2901,40 @@ func (repository *PohonKinerjaRepositoryImpl) FindListOpdAllTematik(ctx context.
 	}
 
 	return result, nil
+}
+
+func (repository *PohonKinerjaRepositoryImpl) ValidateParentLevelTarikStrategiOpd(ctx context.Context, tx *sql.Tx, parentId int, childLevel int) error {
+	// Jika tidak ada parent (parent = 0), tidak perlu validasi
+	if parentId == 0 {
+		return nil
+	}
+
+	// Ambil data parent
+	query := "SELECT level_pohon FROM tb_pohon_kinerja WHERE id = ?"
+	var parentLevel int
+	err := tx.QueryRowContext(ctx, query, parentId).Scan(&parentLevel)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("parent dengan id %d tidak ditemukan", parentId)
+		}
+		return err
+	}
+
+	// Validasi khusus untuk level 4 (Strategic)
+	if childLevel == 4 {
+		// Level 4 bisa memiliki parent dari level 0,1,2,3
+		if parentLevel < 0 || parentLevel > 3 {
+			return fmt.Errorf("untuk level Strategic (4), parent harus memiliki level 0-3, parent level saat ini: %d", parentLevel)
+		}
+		return nil
+	}
+
+	// Untuk level lainnya, parent harus memiliki level tepat 1 di atasnya
+	expectedParentLevel := childLevel - 1
+	if parentLevel != expectedParentLevel {
+		return fmt.Errorf("level parent (%d) tidak sesuai dengan yang diharapkan (%d) untuk child level %d",
+			parentLevel, expectedParentLevel, childLevel)
+	}
+
+	return nil
 }
