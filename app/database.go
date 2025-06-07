@@ -41,9 +41,11 @@ func GetConnection() *sql.DB {
 
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
+	    log.Printf("Koneksi ke DB_URL gagal")
 		log.Fatalf("Error membuka koneksi database: %v", err)
 	}
 
+	log.Printf("koneksi ke database berhasil")
 	// Set konfigurasi koneksi
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(100)

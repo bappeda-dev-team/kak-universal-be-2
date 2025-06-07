@@ -4,13 +4,14 @@ import (
 	"context"
 	"ekak_kabupaten_madiun/helper"
 	"ekak_kabupaten_madiun/model/web"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/MicahParks/keyfunc"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 var JWKS *keyfunc.JWKS
@@ -31,7 +32,6 @@ func NewAuthMiddleware(handler http.Handler) *AuthMiddleware {
 	return &AuthMiddleware{Handler: handler}
 }
 
-
 func (middleware *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tokenHeader := r.Header.Get("Authorization")
 	if tokenHeader == "" || !strings.HasPrefix(tokenHeader, "Bearer ") {
@@ -40,9 +40,14 @@ func (middleware *AuthMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	}
 	rawToken := strings.TrimPrefix(tokenHeader, "Bearer ")
 
-
 	token, err := jwt.Parse(rawToken, JWKS.Keyfunc)
-	if err != nil || !token.Valid {
+	if err != nil {
+		log.Printf("JWT parse error: %v", err)
+		writeUnauthorized(w, "Invalid token")
+		return
+	}
+	if !token.Valid {
+		log.Println("JWT is not valid")
 		writeUnauthorized(w, "Invalid token")
 		return
 	}
