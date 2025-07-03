@@ -17,15 +17,13 @@ func NewServer(authMiddleware *middleware.AuthMiddleware) *http.Server {
 	port := os.Getenv("port")
 	addr := fmt.Sprintf("%s:%s", host, port)
 
-	cors := helper.NewCORSMiddleware()
-
 	if addr == ":" {
 		addr = "localhost:8080"
 	}
 
 	return &http.Server{
 		Addr:    addr,
-		Handler: cors.Handler(authMiddleware),
+		Handler: authMiddleware,
 	}
 }
 
