@@ -465,6 +465,69 @@ func (service *SasaranPemdaServiceImpl) FindAll(ctx context.Context, tahun strin
 	return sasaranPemdaResponses, nil
 }
 
+func (service *SasaranPemdaServiceImpl) FindByTahun(ctx context.Context, tahun string) ([]sasaranpemda.SasaranPemdaMinimalResponse, error) {
+	// cek koneksi db jika error berhenti disini
+	tx, err := service.DB.Begin()
+	if err != nil {
+		return []sasaranpemda.SasaranPemdaMinimalResponse{}, err
+	}
+	defer helper.CommitOrRollback(tx)
+
+	// ambil data dari repo sasaran pemda
+	sasaranPemdaList, err := service.SasaranPemdaRepository.FindAll(ctx, tx, tahun)
+	if err != nil {
+		return []sasaranpemda.SasaranPemdaMinimalResponse{}, err
+	}
+
+	// buat response
+	sasaranPemdaResponses := make([]sasaranpemda.SasaranPemdaMinimalResponse, 0, len(sasaranPemdaList))
+	for _, sasaranPemda := range sasaranPemdaList {
+		indikatorList, err := service.SasaranPemdaRepository.GetIndikatorSasaranByTahun(ctx, tx, sasaranPemda.Id, tahun)
+		if err != nil {
+			return nil, fmt.Errorf("[ERROR] terjadi kesalahan mengambil indikator sasaran_pemda_id %d: %v", sasaranPemda.Id, err)
+		}
+
+		// susun response indikator target
+		indikatorResponse := make([]sasaranpemda.IndikatorResponse, 0, len(indikatorList))
+		for _, indikator := range indikatorList {
+			targetResponse := make([]sasaranpemda.TargetResponse, 0, len(indikator.Target))
+			for _, target := range indikator.Target {
+				targetResponse = append(targetResponse, sasaranpemda.TargetResponse{
+					Id: target.Id,
+					Target: target.Target,
+					Satuan: target.Satuan,
+					Tahun: target.Tahun,
+				})
+			}
+
+			indikatorResponse = append(indikatorResponse, sasaranpemda.IndikatorResponse{
+				Id: indikator.Id,
+				Indikator: indikator.Indikator,
+				SumberData: nullStringToString(indikator.SumberData),
+				RumusPerhitungan: nullStringToString(indikator.RumusPerhitungan),
+				Target: targetResponse,
+			})
+		}
+
+		sasaranPemdaResponses = append(sasaranPemdaResponses, sasaranpemda.SasaranPemdaMinimalResponse{
+			Id: sasaranPemda.Id,
+			SasaranPemda: sasaranPemda.SasaranPemda,
+			TahunAwal: sasaranPemda.TahunAwal,
+			TahunAkhir: sasaranPemda.TahunAkhir,
+			Indikator: indikatorResponse,
+		})
+	}
+
+	return sasaranPemdaResponses, nil
+}
+
+func nullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
+}
+
 func (service *SasaranPemdaServiceImpl) FindAllWithPokin(ctx context.Context, tahunAwal, tahunAkhir, jenisPeriode string) ([]sasaranpemda.TematikResponse, error) {
 	tx, err := service.DB.Begin()
 	if err != nil {

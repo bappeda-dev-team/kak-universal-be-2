@@ -169,6 +169,27 @@ func (controller *SasaranPemdaControllerImpl) FindAll(writer http.ResponseWriter
 	helper.WriteToResponseBody(writer, webResponse)
 }
 
+func (controller *SasaranPemdaControllerImpl) FindByTahun(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	tahun := params.ByName("tahun")
+	sasaranPemdaResponses, err := controller.sasaranPemdaService.FindByTahun(r.Context(), tahun)
+	if err != nil {
+		webResp := web.WebResponse{
+			Code:   http.StatusInternalServerError,
+			Status: "INTERNAL SERVER ERROR",
+			Data:   err.Error(),
+		}
+		helper.WriteToResponseBody(w, webResp)
+		return
+	}
+
+	webResp := web.WebResponse{
+		Code:   http.StatusOK,
+		Status: "success",
+		Data:   sasaranPemdaResponses,
+	}
+	helper.WriteToResponseBody(w, webResp)
+}
+
 func (controller *SasaranPemdaControllerImpl) FindAllWithPokin(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 	tahunAwal := params.ByName("tahun_awal")
 	tahunAkhir := params.ByName("tahun_akhir")

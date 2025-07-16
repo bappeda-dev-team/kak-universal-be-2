@@ -340,6 +340,7 @@ func NewRouter(
 	router.DELETE("/sasaran_pemda/delete/:id", sasaranPemdaController.Delete)
 	router.GET("/sasaran_pemda/detail/:id", sasaranPemdaController.FindById)
 	// router.GET("/sasaran_pemda/findall/:tahun", sasaranPemdaController.FindAll)
+	router.GET("/sasaran_pemda/by-tahun/:tahun", sasaranPemdaController.FindByTahun)
 	router.GET("/sasaran_pemda/findall/tahun_awal/:tahun_awal/tahun_akhir/:tahun_akhir/jenis_periode/:jenis_periode", sasaranPemdaController.FindAllWithPokin)
 
 	//permasalahan rekin

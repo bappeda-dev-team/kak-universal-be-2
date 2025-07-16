@@ -12,6 +12,14 @@ type SasaranPemdaResponse struct {
 	Indikator     []IndikatorResponse `json:"indikator"`
 }
 
+type SasaranPemdaMinimalResponse struct {
+	Id           int                 `json:"id"`
+	SasaranPemda string              `json:"sasaran_pemda"`
+	TahunAwal    string              `json:"tahun_awal"`
+	TahunAkhir   string              `json:"tahun_akhir"`
+	Indikator    []IndikatorResponse `json:"indikator"`
+}
+
 type IndikatorResponse struct {
 	Id               string           `json:"id"`
 	Indikator        string           `json:"indikator"`
