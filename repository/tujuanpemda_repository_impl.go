@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"ekak_kabupaten_madiun/model/domain"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 )
@@ -165,7 +166,12 @@ func (repository *TujuanPemdaRepositoryImpl) FindById(ctx context.Context, tx *s
 	if err != nil {
 		return domain.TujuanPemda{}, fmt.Errorf("error querying tujuan pemda: %v", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
 
 	var result domain.TujuanPemda
 	var firstRow = true
@@ -328,7 +334,12 @@ func (repository *TujuanPemdaRepositoryImpl) FindAll(ctx context.Context, tx *sq
 	if err != nil {
 		return nil, fmt.Errorf("error querying tujuan pemda: %v", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
 
 	var result []domain.TujuanPemda
 
@@ -487,7 +498,12 @@ func (repository *TujuanPemdaRepositoryImpl) FindAllWithPokin(ctx context.Contex
 	if err != nil {
 		return nil, fmt.Errorf("error querying data: %v", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
 
 	pokinMap := make(map[int]*domain.TujuanPemdaWithPokin)
 	indikatorMap := make(map[string]*domain.Indikator)
@@ -663,4 +679,154 @@ func (repository *TujuanPemdaRepositoryImpl) IsPokinIdExists(ctx context.Context
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (repository *TujuanPemdaRepositoryImpl) GetAllIndikatorTujuanPemda(ctx context.Context, tx *sql.Tx) ([]domain.Indikator, error) {
+	query := `
+SELECT ind.id, ind.tujuan_pemda_id, ind.indikator, ind.sumber_data, ind.rumus_perhitungan,
+       tg.id, tg.target, tg.satuan, tg.tahun
+FROM tb_indikator ind
+LEFT JOIN tb_target tg ON tg.indikator_id = ind.id
+JOIN tb_tujuan_pemda tp ON ind.tujuan_pemda_id = tp.id
+ORDER BY tg.tahun;
+`
+	rows, err := tx.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
+
+	indikatorMap := make(map[string]*domain.Indikator)
+	for rows.Next() {
+		var (
+			indId, indikatorStr                         string
+			tujuanPemdaId                               int
+			sumberData, rumusPerhitungan                sql.NullString
+			targetId, targetStr, satuanStr, targetTahun sql.NullString
+		)
+
+		err := rows.Scan(
+			&indId, &tujuanPemdaId, &indikatorStr, &sumberData, &rumusPerhitungan,
+			&targetId, &targetStr, &satuanStr, &targetTahun,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// cek indikator ada di map ??
+		indikator, exists := indikatorMap[indId]
+		if !exists {
+			indikator = &domain.Indikator{
+				Id:               indId,
+				TujuanPemdaId:    tujuanPemdaId,
+				Indikator:        indikatorStr,
+				SumberData:       sumberData,
+				RumusPerhitungan: rumusPerhitungan,
+				Target:           []domain.Target{},
+			}
+			indikatorMap[indId] = indikator
+		}
+
+		// tambah target jika ada
+		if targetId.Valid {
+			indikator.Target = append(indikator.Target, domain.Target{
+				Id:     targetId.String,
+				Target: targetStr.String,
+				Satuan: satuanStr.String,
+				Tahun:  targetTahun.String,
+			})
+		}
+	}
+
+	result := make([]domain.Indikator, 0, len(indikatorMap))
+	for _, indikator := range indikatorMap {
+		result = append(result, *indikator)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (repository *TujuanPemdaRepositoryImpl) GetAllIndikatorTujuanPemdaByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error) {
+	query := `
+SELECT ind.id, ind.tujuan_pemda_id, ind.indikator, ind.sumber_data, ind.rumus_perhitungan,
+       tg.id, tg.target, tg.satuan, tg.tahun
+FROM tb_indikator ind
+LEFT JOIN tb_target tg ON tg.indikator_id = ind.id AND tg.tahun = ?
+JOIN tb_tujuan_pemda tp ON ind.tujuan_pemda_id = tp.id
+	AND CAST(tp.tahun_awal_periode AS UNSIGNED) <= ?
+	AND CAST(tp.tahun_akhir_periode AS UNSIGNED) >= ?
+ORDER BY tg.tahun;
+`
+	rows, err := tx.QueryContext(ctx, query, tahun, tahun, tahun)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
+
+	indikatorMap := make(map[string]*domain.Indikator)
+	for rows.Next() {
+		var (
+			indId, indikatorStr                         string
+			tujuanPemdaId                               int
+			sumberData, rumusPerhitungan                sql.NullString
+			targetId, targetStr, satuanStr, targetTahun sql.NullString
+		)
+
+		err := rows.Scan(
+			&indId, &tujuanPemdaId, &indikatorStr, &sumberData, &rumusPerhitungan,
+			&targetId, &targetStr, &satuanStr, &targetTahun,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// cek indikator ada di map ??
+		indikator, exists := indikatorMap[indId]
+		if !exists {
+			indikator = &domain.Indikator{
+				Id:               indId,
+				TujuanPemdaId:    tujuanPemdaId,
+				Indikator:        indikatorStr,
+				SumberData:       sumberData,
+				RumusPerhitungan: rumusPerhitungan,
+				Target:           []domain.Target{},
+			}
+			indikatorMap[indId] = indikator
+		}
+
+		// tambah target jika ada
+		if targetId.Valid {
+			indikator.Target = append(indikator.Target, domain.Target{
+				Id:     targetId.String,
+				Target: targetStr.String,
+				Satuan: satuanStr.String,
+				Tahun:  targetTahun.String,
+			})
+		}
+	}
+
+	result := make([]domain.Indikator, 0, len(indikatorMap))
+	for _, indikator := range indikatorMap {
+		result = append(result, *indikator)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

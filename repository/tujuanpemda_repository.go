@@ -19,4 +19,6 @@ type TujuanPemdaRepository interface {
 	UpdatePeriode(ctx context.Context, tx *sql.Tx, tujuanPemda domain.TujuanPemda) (domain.TujuanPemda, error)
 	FindAllWithPokin(ctx context.Context, tx *sql.Tx, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]domain.TujuanPemdaWithPokin, error)
 	IsPokinIdExists(ctx context.Context, tx *sql.Tx, pokinId int) (bool, error)
+	GetAllIndikatorTujuanPemda(ctx context.Context, tx *sql.Tx) ([]domain.Indikator, error)
+	GetAllIndikatorTujuanPemdaByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error)
 }

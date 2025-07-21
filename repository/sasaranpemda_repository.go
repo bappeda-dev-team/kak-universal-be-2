@@ -20,4 +20,6 @@ type SasaranPemdaRepository interface {
 	FindAllWithPokin(ctx context.Context, tx *sql.Tx, tahunAwal, tahunAkhir, jenisPeriode string) ([]domain.PohonKinerjaWithSasaran, error)
 	IsSubtemaIdExists(ctx context.Context, tx *sql.Tx, subtemaId int) bool
 	GetIndikatorSasaranByTahun(ctx context.Context, tx *sql.Tx, sasaranPemdaId int, tahun string) ([]domain.Indikator, error)
+	GetAllIndikatorSasaranPemda(ctx context.Context, tx *sql.Tx) ([]domain.Indikator, error)
+	GetAllIndikatorSasaranPemdaByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error)
 }

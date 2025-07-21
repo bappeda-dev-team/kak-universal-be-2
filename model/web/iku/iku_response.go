@@ -17,6 +17,7 @@ type IkuResponse struct {
 }
 
 type TargetResponse struct {
+	Id     string `json:"id"`
 	Target string `json:"target"`
 	Satuan string `json:"satuan"`
 	Tahun  string `json:"tahun"`

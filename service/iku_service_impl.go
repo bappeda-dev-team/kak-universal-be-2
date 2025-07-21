@@ -138,13 +138,13 @@ func (service *IkuServiceImpl) GetByTahun(ctx context.Context, tahun string) ([]
 	defer helper.CommitOrRollback(tx)
 
 	// Ambil semua TujuanPemda
-	tujuans, err := service.TujuanPemdaRepository.FindAll(ctx, tx, tahun, "rpjmd")
+	indikatorTujuans, err := service.TujuanPemdaRepository.GetAllIndikatorTujuanPemdaByTahun(ctx, tx, tahun)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ambil semua SasaranPemda
-	sasarans, err := service.SasaranPemdaRepository.FindAll(ctx, tx, tahun)
+	indikatorSasarans, err := service.SasaranPemdaRepository.GetAllIndikatorSasaranPemdaByTahun(ctx, tx, tahun)
 	if err != nil {
 		return nil, err
 	}
@@ -152,41 +152,37 @@ func (service *IkuServiceImpl) GetByTahun(ctx context.Context, tahun string) ([]
 	var hasil []iku.IkuResponse
 
 	// Proses indikator dari TujuanPemda
-	for _, tujuan := range tujuans {
-		for _, indikator := range tujuan.Indikator {
-			hasil = append(hasil, iku.IkuResponse{
-				IndikatorId:      indikator.Id,
-				Sumber:           indikator.AsalIku,
-				IsActive:         indikator.IsActive,
-				Indikator:        indikator.Indikator,
-				RumusPerhitungan: indikator.RumusPerhitungan.String, // sql.NullString
-				SumberData:       indikator.SumberData.String,       // sql.NullString
-				CreatedAt:        indikator.CreatedAt,
-				TahunAwal:        indikator.TahunAwal,
-				TahunAkhir:       indikator.TahunAkhir,
-				JenisPeriode:     indikator.JenisPeriode,
-				Target:           toTargetResponse(indikator.Target),
-			})
-		}
+	for _, indikator := range indikatorTujuans {
+		hasil = append(hasil, iku.IkuResponse{
+			IndikatorId:      indikator.Id,
+			Sumber:           "TujuanPemda",
+			IsActive:         indikator.IsActive,
+			Indikator:        indikator.Indikator,
+			RumusPerhitungan: indikator.RumusPerhitungan.String, // sql.NullString
+			SumberData:       indikator.SumberData.String,       // sql.NullString
+			CreatedAt:        indikator.CreatedAt,
+			TahunAwal:        indikator.TahunAwal,
+			TahunAkhir:       indikator.TahunAkhir,
+			JenisPeriode:     indikator.JenisPeriode,
+			Target:           toTargetResponse(indikator.Target),
+		})
 	}
 
 	// Proses indikator dari SasaranPemda
-	for _, sasaran := range sasarans {
-		for _, indikator := range sasaran.Indikator {
-			hasil = append(hasil, iku.IkuResponse{
-				IndikatorId:      indikator.Id,
-				Sumber:           indikator.AsalIku,
-				IsActive:         indikator.IsActive,
-				Indikator:        indikator.Indikator,
-				RumusPerhitungan: indikator.RumusPerhitungan.String,
-				SumberData:       indikator.SumberData.String,
-				CreatedAt:        indikator.CreatedAt,
-				TahunAwal:        indikator.TahunAwal,
-				TahunAkhir:       indikator.TahunAkhir,
-				JenisPeriode:     indikator.JenisPeriode,
-				Target:           toTargetResponse(indikator.Target),
-			})
-		}
+	for _, indikator := range indikatorSasarans {
+		hasil = append(hasil, iku.IkuResponse{
+			IndikatorId:      indikator.Id,
+			Sumber:           "SasaranPemda",
+			IsActive:         indikator.IsActive,
+			Indikator:        indikator.Indikator,
+			RumusPerhitungan: indikator.RumusPerhitungan.String,
+			SumberData:       indikator.SumberData.String,
+			CreatedAt:        indikator.CreatedAt,
+			TahunAwal:        indikator.TahunAwal,
+			TahunAkhir:       indikator.TahunAkhir,
+			JenisPeriode:     indikator.JenisPeriode,
+			Target:           toTargetResponse(indikator.Target),
+		})
 	}
 
 	return hasil, nil
@@ -196,12 +192,10 @@ func toTargetResponse(targets []domain.Target) []iku.TargetResponse {
 	var result []iku.TargetResponse
 	for _, t := range targets {
 		result = append(result, iku.TargetResponse{
-			// sesuaikan dengan field yang tersedia di TargetResponse
-			// contoh:
+			Id:     t.Id,
 			Tahun:  t.Tahun,
 			Target: t.Target,
 			Satuan: t.Satuan,
-			// dll
 		})
 	}
 	return result

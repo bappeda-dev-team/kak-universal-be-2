@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"ekak_kabupaten_madiun/model/domain"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 )
@@ -212,7 +213,12 @@ func (repository *SasaranPemdaRepositoryImpl) FindById(ctx context.Context, tx *
 	if err != nil {
 		return domain.SasaranPemda{}, fmt.Errorf("error querying sasaran pemda: %v", err)
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Printf("error closing rows: %v", err)
+		}
+	}(rows)
 
 	var result domain.SasaranPemda
 	var firstRow = true
@@ -362,7 +368,12 @@ func (repository *SasaranPemdaRepositoryImpl) FindAll(ctx context.Context, tx *s
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
 
 	var results []domain.SasaranPemda
 
@@ -397,7 +408,12 @@ func (repository *SasaranPemdaRepositoryImpl) GetIndikatorSasaranByTahun(ctx con
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
 
 	indikatorMap := make(map[string]*domain.Indikator)
 
@@ -491,7 +507,7 @@ func (repository *SasaranPemdaRepositoryImpl) UpdatePeriode(ctx context.Context,
 	query = `
         SELECT 
             tp.id,
-            tp.sasaran_pemda_id,
+            tp.subtema_id,
             tp.periode_id,
             COALESCE(p.tahun_awal, 'Pilih periode') as tahun_awal,
             COALESCE(p.tahun_akhir, 'Pilih periode') as tahun_akhir
@@ -608,7 +624,12 @@ func (repository *SasaranPemdaRepositoryImpl) FindAllWithPokin(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
 
 	tematikMap := make(map[int]*domain.PohonKinerjaWithSasaran)
 
@@ -800,4 +821,154 @@ func (repository *SasaranPemdaRepositoryImpl) IsSubtemaIdExists(ctx context.Cont
 		return false // Ubah return value jika error menjadi false
 	}
 	return count > 0
+}
+
+func (repository *SasaranPemdaRepositoryImpl) GetAllIndikatorSasaranPemda(ctx context.Context, tx *sql.Tx) ([]domain.Indikator, error) {
+	query := `
+SELECT ind.id, ind.sasaran_pemda_id, ind.indikator, ind.sumber_data, ind.rumus_perhitungan,
+       tg.id, tg.target, tg.satuan, tg.tahun
+FROM tb_indikator ind
+LEFT JOIN tb_target tg ON tg.indikator_id = ind.id
+JOIN tb_sasaran_pemda sp ON ind.sasaran_pemda_id = sp.id
+ORDER BY tg.tahun;
+`
+	rows, err := tx.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
+
+	indikatorMap := make(map[string]*domain.Indikator)
+	for rows.Next() {
+		var (
+			indId, indikatorStr                         string
+			sasaranPemdaId                              int
+			sumberData, rumusPerhitungan                sql.NullString
+			targetId, targetStr, satuanStr, targetTahun sql.NullString
+		)
+
+		err := rows.Scan(
+			&indId, &sasaranPemdaId, &indikatorStr, &sumberData, &rumusPerhitungan,
+			&targetId, &targetStr, &satuanStr, &targetTahun,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// cek indikator ada di map ??
+		indikator, exists := indikatorMap[indId]
+		if !exists {
+			indikator = &domain.Indikator{
+				Id:               indId,
+				SasaranPemdaId:   sasaranPemdaId,
+				Indikator:        indikatorStr,
+				SumberData:       sumberData,
+				RumusPerhitungan: rumusPerhitungan,
+				Target:           []domain.Target{},
+			}
+			indikatorMap[indId] = indikator
+		}
+
+		// tambah target jika ada
+		if targetId.Valid {
+			indikator.Target = append(indikator.Target, domain.Target{
+				Id:     targetId.String,
+				Target: targetStr.String,
+				Satuan: satuanStr.String,
+				Tahun:  targetTahun.String,
+			})
+		}
+	}
+
+	result := make([]domain.Indikator, 0, len(indikatorMap))
+	for _, indikator := range indikatorMap {
+		result = append(result, *indikator)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (repository *SasaranPemdaRepositoryImpl) GetAllIndikatorSasaranPemdaByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error) {
+	query := `
+SELECT ind.id, ind.sasaran_pemda_id, ind.indikator, ind.sumber_data, ind.rumus_perhitungan,
+       tg.id, tg.target, tg.satuan, tg.tahun
+FROM tb_indikator ind
+LEFT JOIN tb_target tg ON tg.indikator_id = ind.id AND tg.tahun = ?
+JOIN tb_sasaran_pemda sp ON ind.sasaran_pemda_id = sp.id
+	AND CAST(sp.tahun_awal AS UNSIGNED) <= ?
+	AND CAST(sp.tahun_akhir AS UNSIGNED) >= ?
+ORDER BY tg.tahun;
+`
+	rows, err := tx.QueryContext(ctx, query, tahun, tahun, tahun)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
+
+	indikatorMap := make(map[string]*domain.Indikator)
+	for rows.Next() {
+		var (
+			indId, indikatorStr                         string
+			sasaranPemdaId                              int
+			sumberData, rumusPerhitungan                sql.NullString
+			targetId, targetStr, satuanStr, targetTahun sql.NullString
+		)
+
+		err := rows.Scan(
+			&indId, &sasaranPemdaId, &indikatorStr, &sumberData, &rumusPerhitungan,
+			&targetId, &targetStr, &satuanStr, &targetTahun,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// cek indikator ada di map ??
+		indikator, exists := indikatorMap[indId]
+		if !exists {
+			indikator = &domain.Indikator{
+				Id:               indId,
+				SasaranPemdaId:   sasaranPemdaId,
+				Indikator:        indikatorStr,
+				SumberData:       sumberData,
+				RumusPerhitungan: rumusPerhitungan,
+				Target:           []domain.Target{},
+			}
+			indikatorMap[indId] = indikator
+		}
+
+		// tambah target jika ada
+		if targetId.Valid {
+			indikator.Target = append(indikator.Target, domain.Target{
+				Id:     targetId.String,
+				Target: targetStr.String,
+				Satuan: satuanStr.String,
+				Tahun:  targetTahun.String,
+			})
+		}
+	}
+
+	result := make([]domain.Indikator, 0, len(indikatorMap))
+	for _, indikator := range indikatorMap {
+		result = append(result, *indikator)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
