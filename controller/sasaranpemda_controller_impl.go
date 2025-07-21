@@ -171,6 +171,11 @@ func (controller *SasaranPemdaControllerImpl) FindAll(writer http.ResponseWriter
 
 func (controller *SasaranPemdaControllerImpl) FindByTahun(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	tahun := params.ByName("tahun")
+	if tahun == "" {
+		// Handle error jika tahun tidak ada
+		helper.WriteToResponseBody(w, "Tahun harus diisi")
+		return
+	}
 	sasaranPemdaResponses, err := controller.sasaranPemdaService.FindByTahun(r.Context(), tahun)
 	if err != nil {
 		webResp := web.WebResponse{

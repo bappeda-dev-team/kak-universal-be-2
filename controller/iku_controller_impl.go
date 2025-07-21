@@ -72,3 +72,24 @@ func (controller *IkuControllerImpl) FindAllIkuOpd(writer http.ResponseWriter, r
 	helper.WriteToResponseBody(writer, webResponse)
 
 }
+
+func (controller *IkuControllerImpl) GetByTahun(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	tahun := params.ByName("tahun")
+	if tahun == "" {
+		// Handle error jika tahun tidak ada
+		helper.WriteToResponseBody(w, "Tahun harus diisi")
+		return
+	}
+	ikuResponses, err := controller.IkuService.GetByTahun(r.Context(), tahun)
+	if err != nil {
+		helper.WriteToResponseBody(w, err.Error())
+		return
+	}
+
+	webResponse := web.WebResponse{
+		Code:   200,
+		Status: "OK",
+		Data:   ikuResponses,
+	}
+	helper.WriteToResponseBody(w, webResponse)
+}

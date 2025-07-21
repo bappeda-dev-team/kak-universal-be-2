@@ -8,4 +8,5 @@ import (
 type IkuService interface {
 	FindAll(ctx context.Context, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]iku.IkuResponse, error)
 	FindAllIkuOpd(ctx context.Context, kodeOpd string, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]iku.IkuOpdResponse, error)
+	GetByTahun(ctx context.Context, tahun string) ([]iku.IkuResponse, error)
 }

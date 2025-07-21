@@ -9,4 +9,5 @@ import (
 type IkuRepository interface {
 	FindAll(ctx context.Context, tx *sql.Tx, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]domain.Indikator, error)
 	FindAllIkuOpd(ctx context.Context, tx *sql.Tx, kodeOpd string, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]domain.Indikator, error)
+	GetByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error)
 }

@@ -13,6 +13,8 @@ import (
 type IkuServiceImpl struct {
 	IkuRepository repository.IkuRepository
 	DB            *sql.DB
+	TujuanPemdaRepository repository.TujuanPemdaRepository
+	SasaranPemdaRepository repository.SasaranPemdaRepository
 }
 
 func NewIkuServiceImpl(ikuRepository repository.IkuRepository, db *sql.DB) *IkuServiceImpl {
@@ -121,4 +123,20 @@ func (service *IkuServiceImpl) FindAllIkuOpd(ctx context.Context, kodeOpd string
 	}
 
 	return responses, nil
+}
+
+func (service *IkuServiceImpl) GetByTahun(ctx context.Context, tahun string) ([]iku.IkuResponse, error) {
+	tx, err := service.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer helper.CommitOrRollback(tx)
+	tujuanPemda, err := service.TujuanPemdaRepository.FindAll(ctx, tx, tahun, "rpjmd")
+	if err != nil {
+		return []iku.IkuResponse{}, err
+	}
+	sasaranPemda, err := service.SasaranPemdaRepository.FindAll(ctx, tx, tahun)
+	if err != nil {
+		return []iku.IkuResponse{}, err
+	}
 }
