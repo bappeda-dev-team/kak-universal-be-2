@@ -17,10 +17,6 @@ func NewIkuRepositoryImpl() *IkuRepositoryImpl {
 	return &IkuRepositoryImpl{}
 }
 
-func (repository *IkuRepositoryImpl) GetByTahun(ctx context.Context, tx *sql.Tx, tahun string) ([]domain.Indikator, error) {
-	query := ``
-}
-
 // iku pemda
 func (repository *IkuRepositoryImpl) FindAll(ctx context.Context, tx *sql.Tx, tahunAwal string, tahunAkhir string, jenisPeriode string) ([]domain.Indikator, error) {
 	query := `

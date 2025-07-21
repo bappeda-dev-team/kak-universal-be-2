@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"ekak_kabupaten_madiun/helper"
+	"ekak_kabupaten_madiun/model/domain"
 	"ekak_kabupaten_madiun/model/web/iku"
 	"ekak_kabupaten_madiun/repository"
 	"sort"
@@ -11,16 +12,20 @@ import (
 )
 
 type IkuServiceImpl struct {
-	IkuRepository repository.IkuRepository
-	DB            *sql.DB
-	TujuanPemdaRepository repository.TujuanPemdaRepository
+	IkuRepository          repository.IkuRepository
+	DB                     *sql.DB
+	TujuanPemdaRepository  repository.TujuanPemdaRepository
 	SasaranPemdaRepository repository.SasaranPemdaRepository
 }
 
-func NewIkuServiceImpl(ikuRepository repository.IkuRepository, db *sql.DB) *IkuServiceImpl {
+func NewIkuServiceImpl(ikuRepository repository.IkuRepository, db *sql.DB,
+	tujuanRepo repository.TujuanPemdaRepository,
+	sasaranRepo repository.SasaranPemdaRepository) *IkuServiceImpl {
 	return &IkuServiceImpl{
-		IkuRepository: ikuRepository,
-		DB:            db,
+		IkuRepository:          ikuRepository,
+		DB:                     db,
+		TujuanPemdaRepository:  tujuanRepo,
+		SasaranPemdaRepository: sasaranRepo,
 	}
 }
 
@@ -131,12 +136,73 @@ func (service *IkuServiceImpl) GetByTahun(ctx context.Context, tahun string) ([]
 		return nil, err
 	}
 	defer helper.CommitOrRollback(tx)
-	tujuanPemda, err := service.TujuanPemdaRepository.FindAll(ctx, tx, tahun, "rpjmd")
+
+	// Ambil semua TujuanPemda
+	tujuans, err := service.TujuanPemdaRepository.FindAll(ctx, tx, tahun, "rpjmd")
 	if err != nil {
-		return []iku.IkuResponse{}, err
+		return nil, err
 	}
-	sasaranPemda, err := service.SasaranPemdaRepository.FindAll(ctx, tx, tahun)
+
+	// Ambil semua SasaranPemda
+	sasarans, err := service.SasaranPemdaRepository.FindAll(ctx, tx, tahun)
 	if err != nil {
-		return []iku.IkuResponse{}, err
+		return nil, err
 	}
+
+	var hasil []iku.IkuResponse
+
+	// Proses indikator dari TujuanPemda
+	for _, tujuan := range tujuans {
+		for _, indikator := range tujuan.Indikator {
+			hasil = append(hasil, iku.IkuResponse{
+				IndikatorId:      indikator.Id,
+				Sumber:           indikator.AsalIku,
+				IsActive:         indikator.IsActive,
+				Indikator:        indikator.Indikator,
+				RumusPerhitungan: indikator.RumusPerhitungan.String, // sql.NullString
+				SumberData:       indikator.SumberData.String,       // sql.NullString
+				CreatedAt:        indikator.CreatedAt,
+				TahunAwal:        indikator.TahunAwal,
+				TahunAkhir:       indikator.TahunAkhir,
+				JenisPeriode:     indikator.JenisPeriode,
+				Target:           toTargetResponse(indikator.Target),
+			})
+		}
+	}
+
+	// Proses indikator dari SasaranPemda
+	for _, sasaran := range sasarans {
+		for _, indikator := range sasaran.Indikator {
+			hasil = append(hasil, iku.IkuResponse{
+				IndikatorId:      indikator.Id,
+				Sumber:           indikator.AsalIku,
+				IsActive:         indikator.IsActive,
+				Indikator:        indikator.Indikator,
+				RumusPerhitungan: indikator.RumusPerhitungan.String,
+				SumberData:       indikator.SumberData.String,
+				CreatedAt:        indikator.CreatedAt,
+				TahunAwal:        indikator.TahunAwal,
+				TahunAkhir:       indikator.TahunAkhir,
+				JenisPeriode:     indikator.JenisPeriode,
+				Target:           toTargetResponse(indikator.Target),
+			})
+		}
+	}
+
+	return hasil, nil
+}
+
+func toTargetResponse(targets []domain.Target) []iku.TargetResponse {
+	var result []iku.TargetResponse
+	for _, t := range targets {
+		result = append(result, iku.TargetResponse{
+			// sesuaikan dengan field yang tersedia di TargetResponse
+			// contoh:
+			Tahun:  t.Tahun,
+			Target: t.Target,
+			Satuan: t.Satuan,
+			// dll
+		})
+	}
+	return result
 }
