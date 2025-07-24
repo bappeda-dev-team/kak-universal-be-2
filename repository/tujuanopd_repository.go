@@ -17,4 +17,6 @@ type TujuanOpdRepository interface {
 	FindTujuanOpdByTahun(ctx context.Context, tx *sql.Tx, kodeOpd string, tahun string, jenisPeriode string) ([]domain.TujuanOpd, error)
 	FindIndikatorByTujuanOpdId(ctx context.Context, tx *sql.Tx, tujuanOpdId int) ([]domain.Indikator, error)
 	FindTujuanOpdForCascadingOpd(ctx context.Context, tx *sql.Tx, kodeOpd string, tahun string, jenisPeriode string) ([]domain.TujuanOpd, error)
+	GetByTahun(ctx context.Context, tx *sql.Tx, tahun string, kodeOpd string)([]domain.TujuanOpd, error)
+	GetIndikatorTujuanOpdByTahun(ctx context.Context, tx *sql.Tx, tahun string, kodeOpd string ) ([]domain.Indikator, error)
 }

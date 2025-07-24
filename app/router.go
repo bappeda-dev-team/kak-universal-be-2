@@ -156,7 +156,6 @@ func NewRouter(
 	router.GET("/sub_kegiatan/findall", subKegiatanController.FindAll)
 	router.GET("/sub_kegiatan/pilihan/:kode_opd", subKegiatanController.FindAll)
 	router.GET("/sub_kegiatan/byrekinid/:rencana_kinerja_id", subKegiatanController.FindAll)
-	router.DELETE("/sub_kegiatan/delete/:id", subKegiatanController.Delete)
 
 	//sub kegiatan terpilih
 	router.POST("/sub_kegiatan/create_rekin/:rencana_kinerja_id", subKegiatanTerpilihController.CreateRekin)
@@ -290,6 +289,7 @@ func NewRouter(
 	router.GET("/tujuan_opd/detail/:tujuanOpdId", tujuanOpdController.FindById)
 	router.DELETE("/tujuan_opd/delete/:tujuanOpdId", tujuanOpdController.Delete)
 	router.GET("/tujuan_opd/findall/:kode_opd/tahunawal/:tahun_awal/tahunakhir/:tahun_akhir/jenisperiode/:jenis_periode", tujuanOpdController.FindAll)
+	router.GET("/tujuan_opd/opd/:kode_opd/by-tahun/:tahun", tujuanOpdController.GetByTahun)
 
 	//crosscutting opd
 	router.POST("/crosscutting_opd/create/:parentId", crosscuttingOpdController.Create)

@@ -482,6 +482,7 @@ func (service *SasaranPemdaServiceImpl) FindByTahun(ctx context.Context, tahun s
 	// buat response
 	sasaranPemdaResponses := make([]sasaranpemda.SasaranPemdaMinimalResponse, 0, len(sasaranPemdaList))
 	for _, sasaranPemda := range sasaranPemdaList {
+		// TODO refactor agar lebih efisien, this is ugly
 		indikatorList, err := service.SasaranPemdaRepository.GetIndikatorSasaranByTahun(ctx, tx, sasaranPemda.Id, tahun)
 		if err != nil {
 			return nil, fmt.Errorf("[ERROR] terjadi kesalahan mengambil indikator sasaran_pemda_id %d: %v", sasaranPemda.Id, err)

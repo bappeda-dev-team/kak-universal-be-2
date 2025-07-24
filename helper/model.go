@@ -567,19 +567,23 @@ func ToTujuanOpdResponse(tujuanOpd domain.TujuanOpd) tujuanopd.TujuanOpdResponse
 		}
 		indikatorResponses = append(indikatorResponses, indikatorResponse)
 	}
-
-	return tujuanopd.TujuanOpdResponse{
-		Id:      tujuanOpd.Id,
-		KodeOpd: tujuanOpd.KodeOpd,
-		NamaOpd: tujuanOpd.NamaOpd,
-		Tujuan:  tujuanOpd.Tujuan,
-
-		Periode: tujuanopd.PeriodeResponse{
+	// ⇩ Cek apakah Periode valid
+	var periode *tujuanopd.PeriodeResponse
+	if tujuanOpd.PeriodeId.Id != 0 {
+		periode = &tujuanopd.PeriodeResponse{
 			Id:           tujuanOpd.PeriodeId.Id,
 			TahunAwal:    tujuanOpd.PeriodeId.TahunAwal,
 			TahunAkhir:   tujuanOpd.PeriodeId.TahunAkhir,
 			JenisPeriode: tujuanOpd.PeriodeId.JenisPeriode,
-		},
+		}
+	}
+
+	return tujuanopd.TujuanOpdResponse{
+		Id:        tujuanOpd.Id,
+		KodeOpd:   tujuanOpd.KodeOpd,
+		NamaOpd:   tujuanOpd.NamaOpd,
+		Tujuan:    tujuanOpd.Tujuan,
+		Periode:   periode,
 		Indikator: indikatorResponses,
 	}
 }

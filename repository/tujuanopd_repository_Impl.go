@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"ekak_kabupaten_madiun/model/domain"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 )
@@ -765,4 +766,134 @@ func (repository *TujuanOpdRepositoryImpl) FindTujuanOpdForCascadingOpd(ctx cont
 	}
 
 	return tujuanOpds, nil
+}
+
+func (repository *TujuanOpdRepositoryImpl) GetByTahun(ctx context.Context, tx *sql.Tx, tahun string, kodeOpd string) ([]domain.TujuanOpd, error) {
+	query := `
+	SELECT tj.id,
+	tj.kode_opd, tp.nama_opd, tj.kode_bidang_urusan,
+	tj.tujuan, tj.tahun_awal, tj.tahun_akhir, tj.jenis_periode
+	FROM tb_tujuan_opd tj
+	LEFT JOIN tb_operasional_daerah tp ON tp.kode_opd = tj.kode_opd
+	WHERE CAST(tj.tahun_awal AS UNSIGNED) <= ?
+	AND CAST(tj.tahun_akhir AS UNSIGNED) >= ?
+	AND tj.kode_opd = ?
+	`
+	rows, err := tx.QueryContext(ctx, query, tahun, tahun, kodeOpd)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
+
+	var results []domain.TujuanOpd
+
+	for rows.Next() {
+		var tuOpd domain.TujuanOpd
+
+		err := rows.Scan(
+			&tuOpd.Id,
+			&tuOpd.KodeOpd,
+			&tuOpd.NamaOpd,
+			&tuOpd.KodeBidangUrusan,
+			&tuOpd.Tujuan,
+			&tuOpd.TahunAwal,
+			&tuOpd.TahunAkhir,
+			&tuOpd.JenisPeriode,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, tuOpd)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (repository *TujuanOpdRepositoryImpl) GetIndikatorTujuanOpdByTahun(ctx context.Context, tx *sql.Tx, tahun string, kodeOpd string) ([]domain.Indikator, error) {
+	query := `
+SELECT ind.id, ind.tujuan_opd_id, ind.indikator, ind.sumber_data, ind.rumus_perhitungan,
+       tg.id, tg.indikator_id, tg.target, tg.satuan, tg.tahun
+FROM tb_indikator ind
+LEFT JOIN tb_target tg ON tg.indikator_id = ind.id AND tg.tahun = ?
+JOIN tb_tujuan_opd sp ON ind.tujuan_opd_id = sp.id
+	AND CAST(sp.tahun_awal AS UNSIGNED) <= ?
+	AND CAST(sp.tahun_akhir AS UNSIGNED) >= ?
+    AND sp.kode_opd = ?
+ORDER BY tg.tahun;
+`
+
+	rows, err := tx.QueryContext(ctx, query, tahun, tahun, tahun, kodeOpd)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(rows)
+
+	indikatorMap := make(map[string]*domain.Indikator)
+	for rows.Next() {
+		var (
+			indId, indikatorStr                                      string
+			tujuanOpdId                                              int
+			sumberData, rumusPerhitungan                             sql.NullString
+			targetId, indikatorId, targetStr, satuanStr, targetTahun sql.NullString
+		)
+
+		err := rows.Scan(
+			&indId, &tujuanOpdId, &indikatorStr, &sumberData, &rumusPerhitungan,
+			&targetId, &indikatorId, &targetStr, &satuanStr, &targetTahun,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// cek indikator ada di map ??
+		indikator, exists := indikatorMap[indId]
+		if !exists {
+			indikator = &domain.Indikator{
+				Id:               indId,
+				TujuanOpdId:      tujuanOpdId,
+				Indikator:        indikatorStr,
+				SumberData:       sumberData,
+				RumusPerhitungan: rumusPerhitungan,
+				Target:           []domain.Target{},
+			}
+			indikatorMap[indId] = indikator
+		}
+
+		// tambah target jika ada
+		if targetId.Valid {
+			indikator.Target = append(indikator.Target, domain.Target{
+				Id:          targetId.String,
+				IndikatorId: indikatorId.String,
+				Target:      targetStr.String,
+				Satuan:      satuanStr.String,
+				Tahun:       targetTahun.String,
+			})
+		}
+	}
+
+	result := make([]domain.Indikator, 0, len(indikatorMap))
+	for _, indikator := range indikatorMap {
+		result = append(result, *indikator)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
