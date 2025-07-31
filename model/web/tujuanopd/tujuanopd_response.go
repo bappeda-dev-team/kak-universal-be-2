@@ -12,7 +12,7 @@ type TujuanOpdResponse struct {
 	TahunAwal        string              `json:"tahun_awal,omitempty"`
 	TahunAkhir       string              `json:"tahun_akhir,omitempty"`
 	JenisPeriode     string              `json:"jenis_periode,omitempty"`
-	Periode          *PeriodeResponse     `json:"periode,omitempty"`
+	Periode          *PeriodeResponse    `json:"periode,omitempty"`
 	Indikator        []IndikatorResponse `json:"indikator"`
 }
 

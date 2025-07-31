@@ -23,3 +23,17 @@ type SasaranOpdDetail struct {
 	JenisPeriode   string
 	Indikator      []Indikator
 }
+
+type SasaranOpdTahunan struct {
+	Id           int
+	IdPohon      int
+	KodeOpd      string
+	NamaOpd      string
+	SasaranOpd   string
+	TahunAwal    string
+	TahunAkhir   string
+	JenisPeriode string
+	JenisPohon   string
+	PohonAktif   bool
+	Indikator    []Indikator
+}

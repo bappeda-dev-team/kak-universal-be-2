@@ -14,4 +14,5 @@ type SasaranOpdController interface {
 	Delete(writer http.ResponseWriter, request *http.Request, params httprouter.Params)
 	FindByIdPokin(writer http.ResponseWriter, request *http.Request, params httprouter.Params)
 	FindIdPokinSasaran(writer http.ResponseWriter, request *http.Request, params httprouter.Params)
+	GetByTahun(writer http.ResponseWriter, request *http.Request, params httprouter.Params)
 }

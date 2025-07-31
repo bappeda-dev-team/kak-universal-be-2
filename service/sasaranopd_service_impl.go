@@ -647,3 +647,70 @@ func (service *SasaranOpdServiceImpl) FindIdPokinSasaran(ctx context.Context, id
 
 	return response, nil
 }
+
+func (service *SasaranOpdServiceImpl) GetByTahun(ctx context.Context, tahun string, kodeOpd string) ([]sasaranopd.SasaranOpdTahunanResponse, error) {
+	tx, err := service.DB.Begin()
+	if err != nil {
+		return []sasaranopd.SasaranOpdTahunanResponse{}, err
+	}
+	defer helper.CommitOrRollback(tx)
+
+	sasaranOpdList, err := service.sasaranOpdRepository.GetByTahun(ctx, tx, tahun, kodeOpd)
+	if err != nil {
+		return []sasaranopd.SasaranOpdTahunanResponse{}, err
+	}
+
+	// untuk indikator
+	sasaranMap := make(map[int]*sasaranopd.SasaranOpdTahunanResponse)
+
+	result := make([]sasaranopd.SasaranOpdTahunanResponse, 0, len(sasaranOpdList))
+	for _, sasaranOpd := range sasaranOpdList {
+		sasaranopdId := strconv.Itoa(sasaranOpd.Id)
+		resp := sasaranopd.SasaranOpdTahunanResponse{
+			Id:           sasaranopdId,
+			IdPohon:      sasaranOpd.IdPohon,
+			KodeOpd:      sasaranOpd.KodeOpd,
+			NamaOpd:      sasaranOpd.NamaOpd,
+			SasaranOpd:   sasaranOpd.SasaranOpd,
+			TahunAwal:    sasaranOpd.TahunAwal,
+			TahunAkhir:   sasaranOpd.TahunAkhir,
+			JenisPeriode: sasaranOpd.JenisPeriode,
+			JenisPohon:   sasaranOpd.JenisPohon,
+			PohonAktif:   sasaranOpd.PohonAktif,
+			Indikator:    []sasaranopd.IndikatorResponse{},
+		}
+		result = append(result, resp)
+		sasaranMap[sasaranOpd.Id] = &result[len(result)-1]
+	}
+
+	// indikator
+	indikatorList, err := service.sasaranOpdRepository.GetIndikatorSasaranOpdByTahun(ctx, tx, tahun, kodeOpd)
+	if err != nil {
+		return result, nil
+	}
+
+	for _, indikator := range indikatorList {
+		if sasaranOpd, ok := sasaranMap[indikator.SasaranOpdId]; ok {
+			targetResponse := make([]sasaranopd.TargetResponse, 0, len(indikator.Target))
+			for _, target := range indikator.Target {
+				targetResponse = append(targetResponse, sasaranopd.TargetResponse{
+					Id:          target.Id,
+					IndikatorId: target.IndikatorId,
+					Target:      target.Target,
+					Satuan:      target.Satuan,
+					Tahun:       target.Tahun,
+				})
+			}
+
+			sasaranOpd.Indikator = append(sasaranOpd.Indikator, sasaranopd.IndikatorResponse{
+				Id:               indikator.Id,
+				SasaranOpdId:     strconv.Itoa(indikator.SasaranOpdId),
+				Indikator:        indikator.Indikator,
+				SumberData:       nullStringToString(indikator.SumberData),
+				RumusPerhitungan: nullStringToString(indikator.RumusPerhitungan),
+				Target:           targetResponse,
+			})
+		}
+	}
+	return result, nil
+}

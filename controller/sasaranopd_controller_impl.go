@@ -239,3 +239,27 @@ func (controller *SasaranOpdControllerImpl) FindIdPokinSasaran(writer http.Respo
 		helper.WriteToResponseBody(writer, webResponse)
 	}
 }
+
+func (controller *SasaranOpdControllerImpl) GetByTahun(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+	kodeOpd := params.ByName("kode_opd")
+	tahun := params.ByName("tahun")
+	// idPokin, err := strconv.Atoi(idPokinStr)
+	// helper.PanicIfError(err)
+
+	sasaranOpdResponse, err := controller.SasaranOpdService.GetByTahun(request.Context(), tahun, kodeOpd)
+	if err != nil {
+		webResponse := web.WebResponse{
+			Code:   400,
+			Status: "BAD_REQUEST",
+			Data:   err.Error(),
+		}
+		helper.WriteToResponseBody(writer, webResponse)
+	} else {
+		webResponse := web.WebResponse{
+			Code:   200,
+			Status: "get all sasaran opd by id rencana kinerja",
+			Data:   sasaranOpdResponse,
+		}
+		helper.WriteToResponseBody(writer, webResponse)
+	}
+}

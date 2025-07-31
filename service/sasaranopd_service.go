@@ -14,4 +14,5 @@ type SasaranOpdService interface {
 	Delete(ctx context.Context, id string) error
 	FindByIdPokin(ctx context.Context, idPokin int, tahun string) (*sasaranopd.SasaranOpdResponse, error)
 	FindIdPokinSasaran(ctx context.Context, id int) (pohonkinerja.PohonKinerjaOpdResponse, error)
+	GetByTahun(ctx context.Context, tahun string, kodeOpd string) ([]sasaranopd.SasaranOpdTahunanResponse, error)
 }
